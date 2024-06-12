@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NSMC</title>
+</head>
+<body>
+    <h1>NSMC</h1>
+    <p>Click the button below to generate your challenge:</p>
+    <button onclick="generateChallenge()">Generate Challenge</button>
+    <p id="download-link"></p>
+    <hr>
+    <h2>Submit Your Answer</h2>
+    <form id="submit-form" onsubmit="return submitFlag();">
+        <label for="flag">Input:</label>
+        <input type="text" id="flag" name="flag" required>
+        <input type="hidden" id="challenge-id" name="challenge-id">
+        <button type="submit">Submit</button>
+    </form>
+    <p id="result"></p>
+
+    <script>
+        var timerd;
+        function generateChallenge() {
+            document.getElementById('result').innerText = '';
+            fetch('/generate')
+            .then(response => {
+                // Retrieve the challenge ID from headers
+                const challengeId = response.headers.get('Challenge-ID');
+                document.getElementById('challenge-id').value = challengeId;
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'challenge';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+
+            });
+            
+            // 2 minutes limited
+            timerd = setTimeout(() => {
+                const challengeId = document.getElementById('challenge-id').value;
+                fetch(`/reset/${challengeId}`)
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('result').innerText = data;
+                });
+            }, 120000);
+        }
+
+        function submitFlag() {
+            clearTimeout(timerd);
+            const flag = document.getElementById('flag').value;
+            const challengeId = document.getElementById('challenge-id').value;
+            fetch(`/submit/${challengeId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `flag=${encodeURIComponent(flag)}`,
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('result').innerText = data;
+            });
+            return false;
+        }
+
+    </script>
+</body>
+</html>
